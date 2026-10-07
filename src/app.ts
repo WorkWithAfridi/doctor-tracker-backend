@@ -4,6 +4,7 @@ import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import { rateLimit } from "express-rate-limit";
 import { env } from "./config/env.js";
+import { connectDatabase } from "./config/database.js";
 import { errorHandler } from "./middleware/error.middleware.js";
 import { healthRouter } from "./routes/health.routes.js";
 import { authRouter } from "./routes/auth.routes.js";
@@ -34,6 +35,10 @@ app.use(
 app.use(cors({ origin: new URL(env.FRONTEND_URL).origin, credentials: true }));
 app.use(express.json({ limit: "100kb" }));
 app.use(cookieParser());
+app.use("/api", async (_request, _response, next) => {
+  await connectDatabase();
+  next();
+});
 app.use(healthRouter);
 app.use(docsRouter);
 app.use(
@@ -66,3 +71,5 @@ app.use((_request, response) => {
     .json({ success: false, message: "Route not found", errors: null });
 });
 app.use(errorHandler);
+
+export default app;

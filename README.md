@@ -113,7 +113,30 @@ Check status with `Get-Service MongoDB`. If stopped, run `Start-Service MongoDB`
 
 ## Independent deployment
 
-Deploy this repository to a Node.js host such as Render:
+### Vercel
+
+Import `WorkWithAfridi/doctor-tracker-backend` as a separate Vercel project, with root directory `./`, framework Express, install command `npm ci`, and build command `npm run build`. Leave the output directory at the framework default. `vercel.json` configures Express detection and the build; `src/app.ts` exports the application directly. Node.js 24 is specified in `package.json`. Local development and conventional Node hosting continue to use `src/server.ts`.
+
+Set these variables in Vercel's Production environment before deploying:
+
+| Variable           | Value                                                                                                                                      |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `NODE_ENV`         | `production`                                                                                                                               |
+| `MONGODB_URI`      | The Atlas URI from your ignored backend `.env`, including `/doctor_tracker`                                                                |
+| `FRONTEND_URL`     | The exact frontend origin; use `http://localhost:3000` until the frontend is deployed, then replace it with the production frontend origin |
+| `DOCS_ORIGIN`      | The backend's stable production HTTPS origin, so Swagger can perform authenticated writes                                                  |
+| `COOKIE_SAME_SITE` | `none` for a frontend on a separate site; HTTPS is required and third-party cookie restrictions still apply                                |
+| `TRUST_PROXY_HOPS` | Configure for the host's verified proxy topology; leave at `0` until verified                                                              |
+
+Leave `MONGODB_DNS_SERVERS` unset unless the hosting environment needs an explicit resolver. Do not upload local `.env` or imported credential files; `.vercelignore` excludes them. MongoDB connections are established on demand and shared by concurrent requests within each function instance. `/health` connects and pings the database, returning 503 if unavailable. Documentation remains accessible without a database connection. The build copies Swagger's static assets to `public/docs` because Vercel serves static files through its CDN.
+
+Allow the hosting service's outbound network access in Atlas before verification. Existing Atlas records and indexes are shared with this development workspace; deployment does not seed, migrate, or reset them. In-memory rate limiting and the Settings write guard operate per function instance, so concurrent requests across multiple instances are not coordinated. Keep bulk reset/population operations sequential for the interview demo.
+
+After deployment, verify `/health`, `/docs/`, `/openapi.json`, login/logout, and a protected list endpoint. The frontend's `NEXT_PUBLIC_API_URL` is the backend's stable production origin plus `/api`. Ensure deployment protection permits reviewer and frontend access to the production API. See [Express on Vercel](https://vercel.com/docs/frameworks/backend/express).
+
+### Conventional Node hosting
+
+Alternatively, deploy this repository to a Node.js host such as Render:
 
 - Build command: `npm ci && npm run build`.
 - Start command: `npm start`.
@@ -230,14 +253,14 @@ The companion frontend README lists the required dashboard, doctors/patients and
 
 ## Submission checklist
 
-| Required submission item          | Current status                                                                       |
-| --------------------------------- | ------------------------------------------------------------------------------------ |
-| Backend GitHub repository link    | [doctor-tracker-backend](https://github.com/WorkWithAfridi/doctor-tracker-backend)   |
-| Frontend GitHub repository link   | [doctor-tracker-frontend](https://github.com/WorkWithAfridi/doctor-tracker-frontend) |
-| Live backend API URL              | Pending deployment.                                                                  |
-| Live frontend website URL         | Pending deployment.                                                                  |
-| Live Swagger and health endpoints | Pending deployment; use /docs/ and /health on the hosted backend.                    |
-| Reviewer credentials              | Local seeded account above; confirm the deployed demo credentials separately.        |
-| Desktop and mobile UI evidence    | Pending capture; see Visual evidence.                                                |
+| Required submission item          | Current status                                                                                                                  |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Backend GitHub repository link    | [doctor-tracker-backend](https://github.com/WorkWithAfridi/doctor-tracker-backend)                                              |
+| Frontend GitHub repository link   | [doctor-tracker-frontend](https://github.com/WorkWithAfridi/doctor-tracker-frontend)                                            |
+| Live backend API URL              | [Production API](https://doctor-tracker-backend-xi.vercel.app/api)                                                              |
+| Live frontend website URL         | Pending deployment.                                                                                                             |
+| Live Swagger and health endpoints | [Swagger](https://doctor-tracker-backend-xi.vercel.app/docs/) and [health](https://doctor-tracker-backend-xi.vercel.app/health) |
+| Reviewer credentials              | Local seeded account above; confirm the deployed demo credentials separately.                                                   |
+| Desktop and mobile UI evidence    | Pending capture; see Visual evidence.                                                                                           |
 
-Before submission, deploy the backend and frontend, replace pending values with real URLs, verify indexes and authentication on the deployed database/hosts, and include reviewed UI screenshots. Local development URLs are not live submission URLs.
+Before submission, deploy the frontend, update `FRONTEND_URL` on the backend, replace remaining pending values with real URLs, verify authentication on the deployed hosts, and include reviewed UI screenshots. Local development URLs are not live submission URLs.
