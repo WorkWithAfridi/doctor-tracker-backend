@@ -16,7 +16,7 @@ Doctor Tracker API is an independent Express REST service for authenticated doct
 | Documentation and tests | OpenAPI 3.1/Swagger UI, Supertest, Node test runner with tsx                                |
 | Companion frontend      | Independent Next.js client consuming REST endpoints                                         |
 
-This follows the assessment's separate-client/separate-server stack. The backend supports secure administrator access; doctor creation with name/specialization/hospital/phone/email; doctor search, filters and pagination; corresponding patient lists and creation; global patient listing, editing, deletion and reassignment; and MongoDB-derived dashboard statistics. UI layout, navigation and desktop/mobile evidence belong to the frontend repository. Settings and Swagger are additional tools for exercising the submitted API.
+This follows the assessment's separate-client/separate-server stack. The backend supports secure administrator and staff access; doctor creation with name/specialization/hospital/phone/email; doctor search, filters and pagination; corresponding patient lists and creation; global patient listing, editing, deletion and reassignment; and MongoDB-derived dashboard statistics. UI layout, navigation and desktop/mobile evidence belong to the frontend repository. Settings and Swagger are additional tools for exercising the submitted API.
 
 ## Setup guide
 
@@ -90,7 +90,7 @@ src/
   docs/             OpenAPI specification and generated input schemas
   middleware/       Authentication, origin protection, error handling
   models/           User, Session, Doctor, Patient
-  routes/           Auth, doctors, patients, analytics, settings, docs, health
+  routes/           Auth, users, doctors, patients, analytics, settings, docs, health
   schemas/          Strict Zod body, ID, and query validation
   services/         Authentication, record queries, analytics, workspace operations
   scripts/          Database check, indexes, idempotent seed
@@ -164,7 +164,7 @@ If an Atlas connection fails with `querySrv ECONNREFUSED`, check the DNS resolve
 
 ## Authentication and browser integration
 
-Login uses bcrypt password verification and a random 256-bit session token in an HTTP-only cookie. MongoDB stores only its SHA-256 hash, user reference, and expiry. Every authenticated request checks the session expiry and administrator role; logout deletes the stored session immediately. A TTL index removes expired session records in the background.
+Login uses bcrypt password verification and a random 256-bit session token in an HTTP-only cookie. MongoDB stores only its SHA-256 hash, user reference, and expiry. Every authenticated request checks session expiry, the current administrator/staff role, and the credential version; logout deletes the stored session immediately. A TTL index removes expired session records in the background.
 
 Browser requests must use `credentials: 'include'`. All POST/PATCH/DELETE requests, including login and logout, require an `Origin` header matching `FRONTEND_URL` or `DOCS_ORIGIN`. API clients such as Bruno/Postman must set that header explicitly. Reads do not require an Origin header, but protected reads require a session cookie. Responses use `Cache-Control: no-store`.
 
@@ -172,15 +172,15 @@ Browser requests must use `credentials: 'include'`. All POST/PATCH/DELETE reques
 
 Open [Swagger UI](http://localhost:5000/docs/) with the backend running. All 23 operations include query parameters, request bodies, response schemas, and error codes. Input schemas are generated from the backend's Zod validators; response contracts and examples are maintained in `src/docs/openapi.ts`.
 
-1. Expand **Authentication → POST /api/auth/login**, click **Try it out**, and **Execute** with the demo credentials above.
+1. Expand **Authentication → POST /api/auth/login**, click **Try it out**, and **Execute** with your account email and password (examples are empty; the local seeded account is listed above).
 2. The browser saves the session cookie automatically. Expand any protected endpoint, enter query parameters or a body, and execute it to see the actual status, headers, and response from MongoDB.
 3. Copy real record IDs from list responses before trying detail or update endpoints. The displayed examples are illustrative; write operations change real records. Use logout to revoke the session.
 
-Cookie authentication is browser-managed; there is no token to paste into an Authorize box. Documentation is public, while the feature APIs still require an administrator session. The online Swagger validator is disabled.
+Cookie authentication is browser-managed; there is no token to paste into an Authorize box. Documentation is public. Clinical and analytics APIs require an administrator or staff session; Settings and staff account APIs require an administrator session. The online Swagger validator is disabled.
 
 The [OpenAPI JSON](http://localhost:5000/openapi.json) can be imported into Postman or Bruno. Deployment uses the same `/docs/` and `/openapi.json` paths on the live backend host. Set `DOCS_ORIGIN` to that host's exact HTTPS origin to enable writes from deployed Swagger UI. In development, the default trusted docs origin is `http://localhost:<PORT>` when this setting is omitted; production requires an explicit setting.
 
-For production, cookies use `Secure`. Prefer a same-origin frontend proxy or frontend/API domains under the same site. Direct cross-site cookie use requires `COOKIE_SAME_SITE=none` and HTTPS and can still be restricted by browser third-party-cookie policies. The production topology must be verified before deployment.
+For production, cookies use `Secure`. Prefer a same-origin frontend proxy or frontend/API domains under the same site. Direct cross-site cookie use requires `COOKIE_SAME_SITE=none` and HTTPS and can still be restricted by browser third-party-cookie policies. The deployed frontend/backend cookie flow has been verified in the development browser; browser third-party-cookie policies can still affect other clients.
 
 ## REST endpoints
 
@@ -188,8 +188,10 @@ For production, cookies use `Secure`. Prefer a same-origin frontend proxy or fro
 | ---------------- | --------------------------- | ------------------------------------------- |
 | GET              | `/health`                   | Public database connectivity check          |
 | POST             | `/api/auth/login`           | Email/password login; sets session cookie   |
-| GET              | `/api/auth/me`              | Current administrator                       |
+| GET              | `/api/auth/me`              | Current administrator or staff account      |
 | POST             | `/api/auth/logout`          | Revoke current session; clear cookie        |
+| POST             | `/api/auth/password`        | Change own password; revoke all sessions    |
+| GET/POST         | `/api/users`                | Admin-only account listing/staff creation   |
 | GET/POST         | `/api/doctors`              | List or create doctors                      |
 | GET              | `/api/doctors/options`      | Distinct specialization/hospital filters    |
 | GET/PATCH        | `/api/doctors/:id`          | Read or update a doctor                     |
@@ -197,6 +199,9 @@ For production, cookies use `Secure`. Prefer a same-origin frontend proxy or fro
 | GET/POST         | `/api/patients`             | Global patient list or create with doctorId |
 | GET/PATCH/DELETE | `/api/patients/:id`         | Read, edit/reassign, or delete patient      |
 | GET              | `/api/analytics/dashboard`  | Dashboard metrics and chart data            |
+| GET              | `/api/settings/data`        | Admin-only doctor and patient counts        |
+| POST             | `/api/settings/populate`    | Admin-only sample data generation           |
+| POST             | `/api/settings/reset`       | Admin-only confirmed care record reset      |
 
 Doctor deletion is intentionally omitted, so patient relationships cannot be orphaned by that flow.
 
@@ -204,7 +209,7 @@ Doctor deletion is intentionally omitted, so patient relationships cannot be orp
 
 - `GET /api/settings/data`: current doctor and patient counts.
 - `POST /api/settings/populate` with `{ "doctorCount": 100, "patientCount": 1500 }`: append 1–2,000 fictional doctors (default 100) and 1,000–2,000 patients per request. Patients are assigned across existing and newly added doctors. Existing records are preserved. Dates span 90 days for chart exploration.
-- `POST /api/settings/reset` with `{ "confirmation": "RESET" }`: permanently delete all patients, then doctors. Preserve administrator accounts, sessions, collections, and indexes. This does not drop the database.
+- `POST /api/settings/reset` with `{ "confirmation": "RESET" }`: permanently delete all patients, then doctors. Preserve all user accounts, sessions, collections, and indexes. This does not drop the database.
 
 All settings endpoints require an administrator session; writes require a trusted Origin. Reset and population are explicit operations, never performed automatically at startup. The frontend requires confirmation before either write. The workspace write guard rejects overlapping record mutations with HTTP 409 on this API process. Reads remain available. This guard coordinates a single API process; a multi-process deployment would require database-level coordination. Bulk operations on standalone local MongoDB are not transactions: if the database fails partway through, inspect the resulting counts before retrying. Repeating population appends another batch.
 
@@ -226,7 +231,7 @@ Errors use `{ success: false, message, errors }`. Validation uses HTTP 400 with 
 
 ### 1. Revocable opaque sessions in HTTP-only cookies
 
-The portal needs a persistent administrator login and immediate logout. Login verifies a bcrypt hash and generates a random 256-bit token. The browser receives only an HTTP-only cookie; MongoDB stores the SHA-256 token hash, administrator reference and expiry. Protected requests look up a valid session and current administrator, so logout can immediately revoke the stored session instead of waiting for a self-contained token to expire. The expiry check is immediate; a TTL index handles eventual record cleanup.
+The portal needs persistent administrator/staff login and immediate logout. Login verifies a bcrypt hash and generates a random 256-bit token. The browser receives only an HTTP-only cookie; MongoDB stores the SHA-256 token hash, user reference, credential version and expiry. Protected requests look up a valid session and current user, so logout can immediately revoke the stored session instead of waiting for a self-contained token to expire. The expiry check is immediate; a TTL index handles eventual record cleanup.
 
 The cost is a database lookup for authenticated requests and dependence on database availability. In return, tokens are not exposed to frontend JavaScript and captured tokens cease working after revocation. Trusted Origin checks protect cookie-authenticated writes, while production cookies use Secure. Cross-site hosting must be configured and verified because browser cookie restrictions depend on the frontend/backend domain arrangement. No JWT or browser-stored authentication token is used.
 
@@ -251,11 +256,11 @@ The local database was inspected and the indexes were present. A doctor-specific
 
 ## Verification
 
-Integration tests cover authentication, origin protection, logout revocation, expiry, strict validation, duplicate email, CRUD/reassignment, inclusive date filtering, regex escaping, pagination, analytics, index usage, sample-population bounds and repeated batches, reset preservation of users/sessions/indexes, and exclusion of overlapping record writes. Tests always connect to a newly generated `doctor_tracker_test_*` database on local MongoDB and clean only that database. They never use the application or Atlas database.
+Integration tests cover administrator/staff login, staff creation, duplicate accounts, role escalation rejection, password validation and current-password checks, all-session revocation including racing logins, administrator-only permissions, origin protection, logout revocation, expiry, strict validation, duplicate email, CRUD/reassignment, inclusive date filtering, regex escaping, pagination, analytics, index usage, sample-population bounds and repeated batches, reset preservation of users/sessions/indexes, and exclusion of overlapping record writes. Tests always connect to a newly generated `doctor_tracker_test_*` database on local MongoDB and clean only that database. They never use the application or Atlas database.
 
 ## Visual evidence
 
-The assessment requires desktop and mobile screenshots of the portal. **Pending:** the frontend screenshots have not yet been captured and reviewed because browser automation access was unavailable.
+The assessment requires desktop and mobile screenshots of the portal. **Pending:** the complete desktop/mobile submission screenshot set has not yet been added to the frontend repository. Live login, dashboard, and Profile checks have been performed; development evidence does not replace the full assessment screenshot set.
 
 The companion frontend README lists the required dashboard, doctors/patients and mobile evidence with suggested paths. Once captured, add either copies under this repository's `docs/screenshots/` directory or direct links to the published frontend screenshots; this backend README must remain usable when cloned independently. A Swagger screenshot can supplement, but does not replace, the required portal UI evidence.
 
