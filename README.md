@@ -228,14 +228,14 @@ The companion frontend README lists the required dashboard, doctors/patients and
 
 ## Submission checklist
 
-| Required submission item          | Current status                                                                |
-| --------------------------------- | ----------------------------------------------------------------------------- |
-| Backend GitHub repository link    | Pending publication; no Git remote is configured.                             |
-| Frontend GitHub repository link   | Pending publication in the independent frontend repository.                   |
-| Live backend API URL              | Pending deployment.                                                           |
-| Live frontend website URL         | Pending deployment.                                                           |
-| Live Swagger and health endpoints | Pending deployment; use /docs/ and /health on the hosted backend.             |
-| Reviewer credentials              | Local seeded account above; confirm the deployed demo credentials separately. |
-| Desktop and mobile UI evidence    | Pending capture; see Visual evidence.                                         |
+| Required submission item          | Current status                                                                       |
+| --------------------------------- | ------------------------------------------------------------------------------------ |
+| Backend GitHub repository link    | [doctor-tracker-backend](https://github.com/WorkWithAfridi/doctor-tracker-backend)   |
+| Frontend GitHub repository link   | [doctor-tracker-frontend](https://github.com/WorkWithAfridi/doctor-tracker-frontend) |
+| Live backend API URL              | Pending deployment.                                                                  |
+| Live frontend website URL         | Pending deployment.                                                                  |
+| Live Swagger and health endpoints | Pending deployment; use /docs/ and /health on the hosted backend.                    |
+| Reviewer credentials              | Local seeded account above; confirm the deployed demo credentials separately.        |
+| Desktop and mobile UI evidence    | Pending capture; see Visual evidence.                                                |
 
-Before submission, publish the two repositories, deploy the backend and frontend, replace pending values with real URLs, verify indexes and authentication on the deployed database/hosts, and include reviewed UI screenshots. Local development URLs are not live submission URLs.
+Before submission, deploy the backend and frontend, replace pending values with real URLs, verify indexes and authentication on the deployed database/hosts, and include reviewed UI screenshots. Local development URLs are not live submission URLs.
