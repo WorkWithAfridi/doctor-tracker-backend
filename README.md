@@ -40,6 +40,7 @@ Use Node.js 24 LTS, npm, and MongoDB Community Server. Clone this backend reposi
 | `NODE_ENV`            | Runtime environment                 | `development`                              |
 | `MONGODB_URI`         | Database connection string          | `mongodb://127.0.0.1:27017/doctor_tracker` |
 | `FRONTEND_URL`        | Allowed frontend origin             | `http://localhost:3000`                    |
+| `DOCS_ORIGIN`         | Trusted origin for Swagger writes   | `http://localhost:5000`                    |
 | `SESSION_DAYS`        | Session lifetime                    | `7`                                        |
 | `COOKIE_SAME_SITE`    | Cookie policy: lax, strict, or none | `lax`                                      |
 | `TRUST_PROXY_HOPS`    | Known reverse proxy hop count       | `0`                                        |
@@ -54,6 +55,7 @@ Configuration is validated at startup. `.env` is ignored; `.env.example` is incl
 src/
   config/           Environment validation and database connection
   controllers/      Thin doctor and patient request handlers
+  docs/             OpenAPI specification and generated input schemas
   middleware/       Authentication, origin protection, error handling
   models/           User, Session, Doctor, Patient
   routes/           Auth, doctors, patients, analytics, health
@@ -107,7 +109,19 @@ Local MongoDB is the current configured database. To switch later, create an Atl
 
 Login uses bcrypt password verification and a random 256-bit session token in an HTTP-only cookie. MongoDB stores only its SHA-256 hash, user reference, and expiry. Every authenticated request checks the session expiry and administrator role; logout deletes the stored session immediately. A TTL index removes expired session records in the background.
 
-Browser requests must use `credentials: 'include'`. All POST/PATCH/DELETE requests, including login and logout, require an `Origin` header matching `FRONTEND_URL`. API clients such as Bruno/Postman must set that header explicitly. Reads do not require an Origin header, but protected reads require a session cookie. Responses use `Cache-Control: no-store`.
+Browser requests must use `credentials: 'include'`. All POST/PATCH/DELETE requests, including login and logout, require an `Origin` header matching `FRONTEND_URL` or `DOCS_ORIGIN`. API clients such as Bruno/Postman must set that header explicitly. Reads do not require an Origin header, but protected reads require a session cookie. Responses use `Cache-Control: no-store`.
+
+## Interactive API documentation
+
+Open [Swagger UI](http://localhost:5000/docs/) with the backend running. All 17 operations include query parameters, request bodies, response schemas, and error codes. Input schemas are generated from the backend's Zod validators; response contracts and examples are maintained in `src/docs/openapi.ts`.
+
+1. Expand **Authentication → POST /api/auth/login**, click **Try it out**, and **Execute** with the demo credentials above.
+2. The browser saves the session cookie automatically. Expand any protected endpoint, enter query parameters or a body, and execute it to see the actual status, headers, and response from MongoDB.
+3. Copy real record IDs from list responses before trying detail or update endpoints. The displayed examples are illustrative; write operations change real records. Use logout to revoke the session.
+
+Cookie authentication is browser-managed; there is no token to paste into an Authorize box. Documentation is public, while the feature APIs still require an administrator session. The online Swagger validator is disabled.
+
+The [OpenAPI JSON](http://localhost:5000/openapi.json) can be imported into Postman or Bruno. Deployment uses the same `/docs/` and `/openapi.json` paths on the live backend host. Set `DOCS_ORIGIN` to that host's exact HTTPS origin to enable writes from deployed Swagger UI. In development, the default trusted docs origin is `http://localhost:<PORT>` when this setting is omitted; production requires an explicit setting.
 
 For production, cookies use `Secure`. Prefer a same-origin frontend proxy or frontend/API domains under the same site. Direct cross-site cookie use requires `COOKIE_SAME_SITE=none` and HTTPS and can still be restricted by browser third-party-cookie policies. The production topology must be verified before deployment.
 

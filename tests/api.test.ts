@@ -4,6 +4,7 @@ import { after, before, test } from "node:test";
 import request from "supertest";
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
+import SwaggerParser from "@apidevtools/swagger-parser";
 
 // Always use a newly created local database; never test or clean the configured application database.
 const testDatabase = `doctor_tracker_test_${randomUUID().replaceAll("-", "")}`;
@@ -12,6 +13,8 @@ process.env.MONGODB_URI = `mongodb://127.0.0.1:27017/${testDatabase}`;
 process.env.FRONTEND_URL = "http://localhost:3000";
 process.env.COOKIE_SAME_SITE = "lax";
 process.env.TRUST_PROXY_HOPS = "0";
+process.env.PORT = "5000";
+process.env.DOCS_ORIGIN = "http://localhost:5000";
 const { app } = await import("../src/app.js");
 const { User } = await import("../src/models/User.js");
 const { Session } = await import("../src/models/Session.js");
@@ -20,6 +23,52 @@ const { Patient } = await import("../src/models/Patient.js");
 const { createIndexes } = await import("../src/scripts/indexes.js");
 const origin = "http://localhost:3000";
 const admin = request.agent(app);
+
+test("OpenAPI describes all operations and serves an interactive cookie-authenticated reference", async () => {
+  const spec = await request(app)
+    .get("/openapi.json")
+    .expect(200)
+    .expect("Content-Type", /json/);
+  await SwaggerParser.validate(spec.body);
+  const operations = Object.values(spec.body.paths).flatMap((path) =>
+    Object.values(path as Record<string, { operationId: string }>),
+  );
+  assert.equal(operations.length, 17);
+  assert.equal(
+    new Set(operations.map((operation) => operation.operationId)).size,
+    17,
+  );
+  assert.equal(spec.body.components.schemas.Doctor.additionalProperties, false);
+  assert.ok(spec.body.components.schemas.Doctor.properties.id);
+  assert.ok(spec.body.components.schemas.Patient.properties.doctorId);
+  const limit = spec.body.paths["/api/doctors"].get.parameters.find(
+    (parameter: { name: string }) => parameter.name === "limit",
+  );
+  assert.equal(limit.schema.type, "integer");
+  assert.equal(limit.schema.maximum, 50);
+  const docs = await request(app)
+    .get("/docs/")
+    .expect(200)
+    .expect("Content-Type", /html/);
+  assert.match(docs.text, /swagger-ui-init.js/);
+  const init = await request(app).get("/docs/swagger-ui-init.js").expect(200);
+  assert.match(init.text, /"withCredentials": true/);
+  assert.match(init.text, /"validatorUrl": null/);
+  await request(app).get("/docs/swagger-ui-bundle.js").expect(200);
+  await request(app).get("/api/doctors").expect(401);
+  const docsClient = request.agent(app);
+  await docsClient
+    .post("/api/auth/login")
+    .set("Origin", "http://localhost:5000")
+    .send({ email: "test@example.com", password: "TestPassword123!" })
+    .expect(200);
+  await docsClient.get("/api/auth/me").expect(200);
+  await docsClient
+    .post("/api/auth/logout")
+    .set("Origin", "http://localhost:5000")
+    .expect(204);
+  await docsClient.get("/api/auth/me").expect(401);
+});
 
 before(async () => {
   await mongoose.connect(process.env.MONGODB_URI!, {
