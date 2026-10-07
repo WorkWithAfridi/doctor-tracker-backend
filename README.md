@@ -1,6 +1,28 @@
 # Doctor Tracker API
 
-Doctor Tracker API is an independent Express REST service for authenticated doctor and patient management and dashboard analytics. It stores application records and revocable login sessions in MongoDB, validates every write, and performs filtering, pagination, and analytics on the server. Run commands from this repository root:
+## Description
+
+Doctor Tracker API is an independent Express REST service for authenticated doctor and patient management and dashboard analytics. It stores application records and revocable login sessions in MongoDB, validates every write, and performs filtering, pagination, and analytics on the server.
+
+## Technology stack and assessment coverage
+
+| Layer                   | Implementation                                                                              |
+| ----------------------- | ------------------------------------------------------------------------------------------- |
+| Runtime and API         | Node.js 24 LTS, Express 5, TypeScript                                                       |
+| Database                | MongoDB with Mongoose models and aggregation pipelines                                      |
+| Validation              | Strict Zod body/query/ID validation and validated environment configuration                 |
+| Authentication          | bcrypt password hashes; revocable opaque cookie sessions stored as token hashes             |
+| Middleware              | Helmet, credentialed CORS, origin checks, request limits, rate limiting, centralized errors |
+| Documentation and tests | OpenAPI 3.1/Swagger UI, Supertest, Node test runner with tsx                                |
+| Companion frontend      | Independent Next.js client consuming REST endpoints                                         |
+
+This follows the assessment's separate-client/separate-server stack. The backend supports secure administrator access; doctor creation with name/specialization/hospital/phone/email; doctor search, filters and pagination; corresponding patient lists and creation; global patient listing, editing, deletion and reassignment; and MongoDB-derived dashboard statistics. UI layout, navigation and desktop/mobile evidence belong to the frontend repository. Settings and Swagger are additional tools for exercising the submitted API.
+
+## Setup guide
+
+1. Install Node.js 24 LTS, npm and MongoDB Community Server, then clone this backend repository. MongoDB Atlas can also be used with the configuration below.
+2. Start MongoDB. On the configured Windows development machine, check `Get-Service MongoDB`; if stopped, use `Start-Service MongoDB` from administrator PowerShell.
+3. From this repository root, install dependencies and copy the included [environment example](.env.example). Review the database URI and trusted origins before connecting:
 
 ```powershell
 npm.cmd ci
@@ -9,6 +31,8 @@ npm.cmd run db:check
 npm.cmd run seed
 npm.cmd run dev
 ```
+
+4. Open [the health endpoint](http://localhost:5000/health) to check connectivity, then [Swagger UI](http://localhost:5000/docs/) to log in and try the API. Start the independent frontend at port 3000 for the complete portal.
 
 MongoDB must be running at the URI in `.env`. `GET /health` verifies connectivity. The companion frontend now connects to these APIs for authentication, records, list queries, and dashboard analytics. Its local API URL is `http://localhost:5000/api`; open the frontend at `http://localhost:3000` to match the configured origin.
 
@@ -58,9 +82,9 @@ src/
   docs/             OpenAPI specification and generated input schemas
   middleware/       Authentication, origin protection, error handling
   models/           User, Session, Doctor, Patient
-  routes/           Auth, doctors, patients, analytics, health
+  routes/           Auth, doctors, patients, analytics, settings, docs, health
   schemas/          Strict Zod body, ID, and query validation
-  services/         Authentication, record queries, analytics
+  services/         Authentication, record queries, analytics, workspace operations
   scripts/          Database check, indexes, idempotent seed
   types/            Backend types
   utils/            Shared utilities
@@ -68,7 +92,7 @@ src/
   server.ts         Database-first startup and graceful shutdown
 ```
 
-## Architecture and health checks
+## System architecture and health checks
 
 Next.js client → standalone Express REST API → MongoDB.
 
@@ -165,26 +189,53 @@ Dashboard accepts `days=30` or `days=90` (default 30). It returns totals, the to
 
 Errors use `{ success: false, message, errors }`. Validation uses HTTP 400 with field messages; missing records use 404, duplicate doctor email uses 409, missing/expired sessions use 401, forbidden roles/origins use 403, and rate limits use 429. Internal errors use a generic 500 response without database details or stack traces.
 
-## Technical decisions and performance
+## Technical decisions
 
-1. **Revocable opaque sessions:** Server-owned sessions avoid exposing tokens to JavaScript and make logout immediately revoke a captured token. This adds a session collection and one database check per authenticated request, a deliberate tradeoff for simple revocation rather than stateless JWT logout semantics.
-2. **Referenced patients:** Patients have their own collection and doctorId reference. Global listing, reassignment, and individual mutations remain independent of doctor documents. Doctor-specific filtering and descending date sorting share a compound index.
-3. **Database-owned lists and analytics:** Pagination uses bounded skip/limit, projected lookups attach doctor names/counts without per-row application queries, and dashboard summaries use aggregation. Indexes cover common doctor specialization/hospital/date and patient doctor/condition/date queries, plus name sorting. Integration tests verify an index scan for doctor-specific patient queries.
+### 1. Revocable opaque sessions in HTTP-only cookies
 
-Search is escaped, length-limited, case-insensitive substring matching. Patient search includes full name, phone/email, and assigned doctor name. Substring regex and full-name expressions can scan records; these indexes do not prove efficient substring search at large scale. For a substantially larger dataset, add a dedicated search index and cursor pagination based on measured query plans. Offset pagination is appropriate for the assessment-sized dataset.
+The portal needs a persistent administrator login and immediate logout. Login verifies a bcrypt hash and generates a random 256-bit token. The browser receives only an HTTP-only cookie; MongoDB stores the SHA-256 token hash, administrator reference and expiry. Protected requests look up a valid session and current administrator, so logout can immediately revoke the stored session instead of waiting for a self-contained token to expire. The expiry check is immediate; a TTL index handles eventual record cleanup.
+
+The cost is a database lookup for authenticated requests and dependence on database availability. In return, tokens are not exposed to frontend JavaScript and captured tokens cease working after revocation. Trusted Origin checks protect cookie-authenticated writes, while production cookies use Secure. Cross-site hosting must be configured and verified because browser cookie restrictions depend on the frontend/backend domain arrangement. No JWT or browser-stored authentication token is used.
+
+### 2. Referenced patients with indexed server queries and aggregations
+
+Patients live in their own collection with a doctorId reference. Global lists, individual edits and reassignment remain independent of doctor documents, while assignment validation prevents writes against missing doctors. Bounded pagination, stable ID tie-breakers, aggregate doctor patient counts and projected patient doctor summaries avoid per-row application queries. The dashboard derives totals, top workloads, conditions and daily UTC growth from the same stored records, including zero-filled dates.
+
+Compound indexes cover common filter/date sort combinations; name indexes support directory sorting. Substring search is escaped and length-limited, but regex/full-name expressions can still scan records, so this is not a claim that every search is index-backed. Offset pagination and full doctor option loading suit assessment-sized data; much larger workloads would need measured query plans, dedicated search and cursor pagination. The separate REST boundary keeps each repository independently deployable and testable.
+
+## Database indexes and performance
+
+Indexes are declared in the models and created by `npm run db:indexes` or the seed script. Mongoose autoIndex is disabled at API startup, so a newly deployed database requires explicit initialization. Index creation does not drop existing indexes, and Settings reset removes records while retaining indexes.
+
+| Collection | Declared indexes in addition to MongoDB's _id index                                         |
+| ---------- | ------------------------------------------------------------------------------------------- |
+| doctors    | Unique email; createdAt/_id; specialization/createdAt/_id; hospital/createdAt/_id; name/_id |
+| patients   | createdAt/_id; doctorId/createdAt/_id; condition/createdAt/_id; firstName/lastName/_id      |
+| users      | Unique email                                                                                |
+| sessions   | Unique tokenHash; expiresAt TTL with expireAfterSeconds = 0                                 |
+
+The local database was inspected and the indexes were present. A doctor-specific patient query used an index scan; the integration suite also checks this query plan. That verifies this access pattern, rather than all possible combinations of search/filter/sort. Use MongoDB Compass's collection Indexes tab and query explain plans when evaluating larger sample batches.
 
 ## Verification
 
-Integration tests cover authentication, origin protection, logout revocation, expiry, strict validation, duplicate email, CRUD/reassignment, inclusive date filtering, regex escaping, pagination, analytics, and index usage. Tests always connect to a newly generated `doctor_tracker_test_*` database on local MongoDB and clean only that database. They never use the application or Atlas database.
+Integration tests cover authentication, origin protection, logout revocation, expiry, strict validation, duplicate email, CRUD/reassignment, inclusive date filtering, regex escaping, pagination, analytics, index usage, sample-population bounds and repeated batches, reset preservation of users/sessions/indexes, and exclusion of overlapping record writes. Tests always connect to a newly generated `doctor_tracker_test_*` database on local MongoDB and clean only that database. They never use the application or Atlas database.
 
-## Submission links
+## Visual evidence
 
-- Backend GitHub repository: pending publication.
-- Live backend API: pending deployment.
-- Live health endpoint: pending deployment.
-- Companion frontend repository and website: pending publication and deployment.
-- Demo credentials: listed above; change them for a non-demo deployment.
+The assessment requires desktop and mobile screenshots of the portal. **Pending:** the frontend screenshots have not yet been captured and reviewed because browser automation access was unavailable.
 
-## Documentation to complete
+The companion frontend README lists the required dashboard, doctors/patients and mobile evidence with suggested paths. Once captured, add either copies under this repository's `docs/screenshots/` directory or direct links to the published frontend screenshots; this backend README must remain usable when cloned independently. A Swagger screenshot can supplement, but does not replace, the required portal UI evidence.
 
-Add final repository/deployment URLs after publishing and verify authentication with the chosen live frontend/backend domain topology.
+## Submission checklist
+
+| Required submission item          | Current status                                                                |
+| --------------------------------- | ----------------------------------------------------------------------------- |
+| Backend GitHub repository link    | Pending publication; no Git remote is configured.                             |
+| Frontend GitHub repository link   | Pending publication in the independent frontend repository.                   |
+| Live backend API URL              | Pending deployment.                                                           |
+| Live frontend website URL         | Pending deployment.                                                           |
+| Live Swagger and health endpoints | Pending deployment; use /docs/ and /health on the hosted backend.             |
+| Reviewer credentials              | Local seeded account above; confirm the deployed demo credentials separately. |
+| Desktop and mobile UI evidence    | Pending capture; see Visual evidence.                                         |
+
+Before submission, publish the two repositories, deploy the backend and frontend, replace pending values with real URLs, verify indexes and authentication on the deployed database/hosts, and include reviewed UI screenshots. Local development URLs are not live submission URLs.
