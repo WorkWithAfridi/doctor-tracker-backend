@@ -5,10 +5,12 @@ import { connectDatabase, disconnectDatabase } from "./config/database.js";
 async function start(): Promise<void> {
   await connectDatabase();
   const server = app.listen(env.PORT, () => {
-    console.info(`Doctor Tracker API listening on http://localhost:${env.PORT}`);
+    console.info(
+      `Doctor Tracker API listening on http://localhost:${env.PORT}`,
+    );
   });
   server.on("error", (error) => {
-    console.error("API server failed", error);
+    console.error("API server failed", { name: error.name });
     void disconnectDatabase().finally(() => process.exit(1));
   });
 
@@ -30,6 +32,9 @@ async function start(): Promise<void> {
 }
 
 start().catch((error: unknown) => {
-  console.error("Failed to start API", error);
+  console.error(
+    "Failed to start API. Check configuration, MongoDB access, and port availability.",
+    { name: error instanceof Error ? error.name : "Unknown" },
+  );
   process.exit(1);
 });
