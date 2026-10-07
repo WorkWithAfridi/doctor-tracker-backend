@@ -1,0 +1,10 @@
+import { Router } from "express";
+import * as controller from "../controllers/doctor.controller.js";
+export const doctorRouter = Router();
+doctorRouter.get("/", controller.list);
+doctorRouter.post("/", controller.create);
+doctorRouter.get("/options", controller.options);
+doctorRouter.get("/:id", controller.details);
+doctorRouter.patch("/:id", controller.update);
+doctorRouter.get("/:id/patients", controller.assigned);
+doctorRouter.post("/:id/patients", controller.addPatient);
