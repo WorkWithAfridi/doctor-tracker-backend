@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { resetSchema, populateSchema } from "../routes/settings.routes.js";
 import {
   doctorSchema,
   doctorPatchSchema,
@@ -161,6 +162,10 @@ export const openapi = {
   servers: [{ url: "/", description: "This running API server" }],
   security: [{ sessionCookie: [] }],
   tags: [
+    {
+      name: "Settings",
+      description: "Administrator workspace reset and sample-data generation",
+    },
     { name: "Health", description: "Public connectivity checks" },
     {
       name: "Authentication",
@@ -178,6 +183,63 @@ export const openapi = {
     },
   ],
   paths: {
+    "/api/settings/data": {
+      get: op(
+        "workspaceCounts",
+        "Settings",
+        "Get workspace doctor and patient counts",
+        {
+          responses: {
+            ...errors,
+            "200": response(
+              "Current workspace counts",
+              wrapped(ref("WorkspaceCounts")),
+            ),
+          },
+        },
+      ),
+    },
+    "/api/settings/reset": {
+      post: op(
+        "resetWorkspace",
+        "Settings",
+        "Delete all doctor and patient records",
+        {
+          description:
+            "Destructive. Requires confirmation RESET. Preserves users, sessions, and indexes. Record writes on this API process are serialized during this operation.",
+          requestBody: body("WorkspaceReset", { confirmation: "RESET" }),
+          responses: {
+            ...errors,
+            "409": response("Another workspace write is running", ref("Error")),
+            "200": response(
+              "Workspace emptied",
+              wrapped(ref("WorkspaceCounts")),
+              { data: { doctors: 0, patients: 0 } },
+            ),
+          },
+        },
+      ),
+    },
+    "/api/settings/populate": {
+      post: op(
+        "populateWorkspace",
+        "Settings",
+        "Append 1,000–2,000 fictional patients",
+        {
+          description:
+            "Appends patients to existing records. Creates 24 doctors if the workspace has none. Repeated calls append more patients. Creation dates span 90 days for charts.",
+          requestBody: body("WorkspacePopulate", { patientCount: 1500 }),
+          responses: {
+            ...errors,
+            "409": response("Another workspace write is running", ref("Error")),
+            "201": response(
+              "Sample records added",
+              wrapped(ref("WorkspacePopulation")),
+            ),
+          },
+        },
+      ),
+    },
     "/health": {
       get: op("getHealth", "Health", "Check API and MongoDB health", {
         security: [],
@@ -488,6 +550,23 @@ export const openapi = {
       },
     },
     schemas: {
+      WorkspaceReset: inputSchema(resetSchema),
+      WorkspacePopulate: inputSchema(populateSchema),
+      WorkspaceCounts: {
+        type: "object",
+        required: ["doctors", "patients"],
+        properties: { doctors: count, patients: count },
+      },
+      WorkspacePopulation: {
+        type: "object",
+        required: ["doctors", "patients", "doctorsAdded", "patientsAdded"],
+        properties: {
+          doctors: count,
+          patients: count,
+          doctorsAdded: count,
+          patientsAdded: { type: "integer", minimum: 1000, maximum: 2000 },
+        },
+      },
       Login: {
         type: "object",
         additionalProperties: false,

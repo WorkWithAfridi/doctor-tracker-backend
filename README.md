@@ -17,7 +17,7 @@ MongoDB must be running at the URI in `.env`. `GET /health` verifies connectivit
 - Email: `admin@doctortracker.com`
 - Password: `Admin123!`
 
-The seed creates one admin, 24 fictional doctors, and 186 fictional patients. Repeated runs preserve existing records and passwords. There is no destructive reset command. Set `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` before first seeding to customize the account. Production seeding rejects the default demo password.
+The seed creates one admin, 24 fictional doctors, and 186 fictional patients. Repeated runs preserve existing records and passwords. The seed command does not reset records; the administrator Settings page provides a separately confirmed reset. Set `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` before first seeding to customize the account. Production seeding rejects the default demo password.
 
 - `npm.cmd run typecheck`: validate TypeScript.
 - `npm.cmd run build`: compile to `dist/`.
@@ -113,7 +113,7 @@ Browser requests must use `credentials: 'include'`. All POST/PATCH/DELETE reques
 
 ## Interactive API documentation
 
-Open [Swagger UI](http://localhost:5000/docs/) with the backend running. All 17 operations include query parameters, request bodies, response schemas, and error codes. Input schemas are generated from the backend's Zod validators; response contracts and examples are maintained in `src/docs/openapi.ts`.
+Open [Swagger UI](http://localhost:5000/docs/) with the backend running. All 20 operations include query parameters, request bodies, response schemas, and error codes. Input schemas are generated from the backend's Zod validators; response contracts and examples are maintained in `src/docs/openapi.ts`.
 
 1. Expand **Authentication → POST /api/auth/login**, click **Try it out**, and **Execute** with the demo credentials above.
 2. The browser saves the session cookie automatically. Expand any protected endpoint, enter query parameters or a body, and execute it to see the actual status, headers, and response from MongoDB.
@@ -142,6 +142,14 @@ For production, cookies use `Secure`. Prefer a same-origin frontend proxy or fro
 | GET              | `/api/analytics/dashboard`  | Dashboard metrics and chart data            |
 
 Doctor deletion is intentionally omitted, so patient relationships cannot be orphaned by that flow.
+
+### Workspace settings
+
+- `GET /api/settings/data`: current doctor and patient counts.
+- `POST /api/settings/populate` with `{ "patientCount": 1500 }`: append 1,000–2,000 fictional patients per request; create 24 sample doctors only when no doctors exist. Existing records are preserved. Dates span 90 days for chart exploration.
+- `POST /api/settings/reset` with `{ "confirmation": "RESET" }`: permanently delete all patients, then doctors. Preserve administrator accounts, sessions, collections, and indexes. This does not drop the database.
+
+All settings endpoints require an administrator session; writes require a trusted Origin. Reset and population are explicit operations, never performed automatically at startup. The frontend requires confirmation before either write. The workspace write guard rejects overlapping record mutations with HTTP 409 on this API process. Reads remain available. This guard coordinates a single API process; a multi-process deployment would require database-level coordination. Bulk operations on standalone local MongoDB are not transactions: if the database fails partway through, inspect the resulting counts before retrying. Repeating population appends another batch.
 
 ### Query contracts
 

@@ -33,10 +33,10 @@ test("OpenAPI describes all operations and serves an interactive cookie-authenti
   const operations = Object.values(spec.body.paths).flatMap((path) =>
     Object.values(path as Record<string, { operationId: string }>),
   );
-  assert.equal(operations.length, 17);
+  assert.equal(operations.length, 20);
   assert.equal(
     new Set(operations.map((operation) => operation.operationId)).size,
-    17,
+    20,
   );
   assert.equal(spec.body.components.schemas.Doctor.additionalProperties, false);
   assert.ok(spec.body.components.schemas.Doctor.properties.id);
@@ -282,4 +282,68 @@ test("expired sessions are rejected before TTL cleanup", async () => {
     { $set: { expiresAt: new Date(Date.now() - 1000) } },
   );
   await admin.get("/api/auth/me").expect(401);
+});
+
+test("settings validate bulk operations and preserve administrators, sessions, and relationships", async () => {
+  const client = request.agent(app);
+  await request(app).get("/api/settings/data").expect(401);
+  await client
+    .post("/api/auth/login")
+    .set("Origin", origin)
+    .send({ email: "test@example.com", password: "TestPassword123!" })
+    .expect(200);
+  await client
+    .post("/api/settings/reset")
+    .set("Origin", "https://untrusted.example")
+    .send({ confirmation: "RESET" })
+    .expect(403);
+  await client
+    .post("/api/settings/reset")
+    .set("Origin", origin)
+    .send({ confirmation: "wrong" })
+    .expect(400);
+  assert.equal(await Doctor.countDocuments(), 2);
+  for (const patientCount of [999, 2001, 1000.5])
+    await client
+      .post("/api/settings/populate")
+      .set("Origin", origin)
+      .send({ patientCount })
+      .expect(400);
+  await client
+    .post("/api/settings/reset")
+    .set("Origin", origin)
+    .send({ confirmation: "RESET" })
+    .expect(200);
+  const populated = await client
+    .post("/api/settings/populate")
+    .set("Origin", origin)
+    .send({ patientCount: 1000 })
+    .expect(201);
+  assert.deepEqual(populated.body.data, {
+    doctors: 24,
+    patients: 1000,
+    doctorsAdded: 24,
+    patientsAdded: 1000,
+  });
+  const again = await client
+    .post("/api/settings/populate")
+    .set("Origin", origin)
+    .send({ patientCount: 1000 })
+    .expect(201);
+  assert.equal(again.body.data.patients, 2000);
+  assert.equal(again.body.data.doctorsAdded, 0);
+  const ids = await Doctor.distinct("_id");
+  assert.equal(await Patient.countDocuments({ doctorId: { $nin: ids } }), 0);
+  const counts = await client.get("/api/settings/data").expect(200);
+  assert.equal(counts.body.data.patients, 2000);
+  const reset = await client
+    .post("/api/settings/reset")
+    .set("Origin", origin)
+    .send({ confirmation: "RESET" })
+    .expect(200);
+  assert.deepEqual(reset.body.data, { doctors: 0, patients: 0 });
+  assert.equal(await User.countDocuments(), 1);
+  await client.get("/api/auth/me").expect(200);
+  const indexes = await Patient.listIndexes();
+  assert.ok(indexes.some((index) => index.key.doctorId === 1));
 });
