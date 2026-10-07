@@ -56,6 +56,14 @@ The seed creates one admin, 24 fictional doctors, and 186 fictional patients. Re
 
 Use Node.js 24 LTS, npm, and MongoDB Community Server. Clone this backend repository and run the setup commands above from its root. No parent package or frontend folder is required to install, build, or run the backend.
 
+## Profile and staff accounts
+
+- `POST /api/auth/password`: authenticated users provide `currentPassword` and `newPassword`. Passwords require 8–72 characters and at most 72 UTF-8 bytes. All sessions are revoked and the cookie is cleared; sign in again with the new password. A per-user credential version also invalidates sessions created by a login racing with the password change.
+- `GET /api/users?page=1&limit=20`: administrators list workspace accounts without password hashes or credential versions.
+- `POST /api/users`: administrators create staff using `name`, `email`, and `password`. The role is always staff; role overrides and duplicate emails are rejected.
+
+Staff can manage doctors and patients, access analytics, and change their own password. Only administrators can create users or use Settings reset/population. Existing administrators and sessions remain compatible without a database reset or migration.
+
 ## Environment variables
 
 | Variable              | Purpose                             | Local value                                |
@@ -96,7 +104,7 @@ src/
 
 Next.js client → standalone Express REST API → MongoDB.
 
-The backend connects to MongoDB before accepting requests. `GET /health` performs a database ping and returns HTTP 200 when connected or HTTP 503 when unavailable. Unknown routes return consistent JSON with HTTP 404. Helmet, restricted credentialed CORS, a JSON body limit, rate limiting, centralized errors, and graceful shutdown are configured. Feature APIs mount under `/api` and require an administrator session.
+The backend connects to MongoDB before accepting requests. `GET /health` performs a database ping and returns HTTP 200 when connected or HTTP 503 when unavailable. Unknown routes return consistent JSON with HTTP 404. Helmet, restricted credentialed CORS, a JSON body limit, rate limiting, centralized errors, and graceful shutdown are configured. Feature APIs mount under `/api` and require an authenticated administrator or staff session; Settings and staff management are administrator-only.
 
 MongoDB creates databases and collections on the first write. A connection/ping alone does not create application collections.
 
@@ -162,7 +170,7 @@ Browser requests must use `credentials: 'include'`. All POST/PATCH/DELETE reques
 
 ## Interactive API documentation
 
-Open [Swagger UI](http://localhost:5000/docs/) with the backend running. All 20 operations include query parameters, request bodies, response schemas, and error codes. Input schemas are generated from the backend's Zod validators; response contracts and examples are maintained in `src/docs/openapi.ts`.
+Open [Swagger UI](http://localhost:5000/docs/) with the backend running. All 23 operations include query parameters, request bodies, response schemas, and error codes. Input schemas are generated from the backend's Zod validators; response contracts and examples are maintained in `src/docs/openapi.ts`.
 
 1. Expand **Authentication → POST /api/auth/login**, click **Try it out**, and **Execute** with the demo credentials above.
 2. The browser saves the session cookie automatically. Expand any protected endpoint, enter query parameters or a body, and execute it to see the actual status, headers, and response from MongoDB.

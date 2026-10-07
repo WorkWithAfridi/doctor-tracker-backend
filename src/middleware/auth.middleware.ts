@@ -15,16 +15,23 @@ export const requireAuth: RequestHandler = async (request, response, next) => {
   if (!session)
     throw new ApiError(401, "Your session has expired. Please sign in again");
   const user = await User.findById(session.userId)
-    .select("name email role")
+    .select("name email role +authVersion")
     .lean();
-  if (!user || user.role !== "admin")
-    throw new ApiError(403, "Administrator access is required");
+  if (!user || !["admin", "staff"].includes(user.role))
+    throw new ApiError(403, "Workspace access is required");
+  if ((session.authVersion ?? 0) !== (user.authVersion ?? 0))
+    throw new ApiError(401, "Your password changed. Please sign in again");
   response.locals.user = {
     id: String(user._id),
     name: user.name,
     email: user.email,
     role: user.role,
   };
+  next();
+};
+export const requireAdmin: RequestHandler = (_request, response, next) => {
+  if (response.locals.user?.role !== "admin")
+    throw new ApiError(403, "Administrator access is required");
   next();
 };
 // Cookie-authenticated writes require an explicitly trusted browser origin.

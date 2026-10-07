@@ -33,10 +33,10 @@ test("OpenAPI describes all operations and serves an interactive cookie-authenti
   const operations = Object.values(spec.body.paths).flatMap((path) =>
     Object.values(path as Record<string, { operationId: string }>),
   );
-  assert.equal(operations.length, 20);
+  assert.equal(operations.length, 23);
   assert.equal(
     new Set(operations.map((operation) => operation.operationId)).size,
-    20,
+    23,
   );
   assert.equal(spec.body.components.schemas.Doctor.additionalProperties, false);
   assert.ok(spec.body.components.schemas.Doctor.properties.id);

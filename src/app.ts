@@ -16,8 +16,10 @@ import { settingsRouter } from "./routes/settings.routes.js";
 import { workspaceWrite } from "./middleware/workspace-write.middleware.js";
 import {
   requireAuth,
+  requireAdmin,
   requireTrustedOrigin,
 } from "./middleware/auth.middleware.js";
+import { usersRouter } from "./routes/users.routes.js";
 
 export const app = express();
 
@@ -63,7 +65,14 @@ app.use(
 app.use("/api/auth", authRouter);
 app.use("/api/doctors", requireAuth, workspaceWrite, doctorRouter);
 app.use("/api/patients", requireAuth, workspaceWrite, patientRouter);
-app.use("/api/settings", requireAuth, workspaceWrite, settingsRouter);
+app.use(
+  "/api/settings",
+  requireAuth,
+  requireAdmin,
+  workspaceWrite,
+  settingsRouter,
+);
+app.use("/api/users", requireAuth, requireAdmin, usersRouter);
 app.use("/api/analytics", requireAuth, analyticsRouter);
 app.use((_request, response) => {
   response

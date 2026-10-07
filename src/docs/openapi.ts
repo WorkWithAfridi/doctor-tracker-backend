@@ -10,6 +10,7 @@ import {
   patientQuerySchema,
 } from "../schemas/records.schema.js";
 import { conditions } from "../models/Patient.js";
+import { changePasswordSchema, staffSchema } from "../schemas/users.schema.js";
 
 type Schema = Record<string, unknown>;
 const ref = (name: string) => ({ $ref: `#/components/schemas/${name}` });
@@ -157,7 +158,7 @@ export const openapi = {
     title: "Doctor Tracker API",
     version: "0.1.0",
     description:
-      "Live REST API reference. Expand an endpoint to inspect its parameters, request body, and response schemas. Use **Try it out → Execute** to call the running API.\n\n**Start here:** open Authentication → POST /api/auth/login and enter your administrator email and password before executing. The browser saves the HTTP-only session cookie automatically; then execute protected endpoints. Do not paste a token into Authorize: browsers manage this cookie. Logout revokes the session.\n\nAll non-authentication examples are fictional. Login credentials are intentionally empty. Path IDs in examples are illustrative: copy actual IDs from list responses. Create/update/delete calls change real database records.\n\nDates and dashboard statistics use UTC. Export this document at /openapi.json to import into Postman or Bruno.",
+      "Live REST API reference. Expand an endpoint to inspect its parameters, request body, and response schemas. Use **Try it out → Execute** to call the running API.\n\n**Start here:** open Authentication → POST /api/auth/login and enter your account email and password before executing. The browser saves the HTTP-only session cookie automatically; then execute protected endpoints. Do not paste a token into Authorize: browsers manage this cookie. Logout revokes the session.\n\nAll non-authentication examples are fictional. Login credentials are intentionally empty. Path IDs in examples are illustrative: copy actual IDs from list responses. Create/update/delete calls change real database records.\n\nDates and dashboard statistics use UTC. Export this document at /openapi.json to import into Postman or Bruno.",
   },
   servers: [{ url: "/", description: "This running API server" }],
   security: [{ sessionCookie: [] }],
@@ -167,6 +168,10 @@ export const openapi = {
       description: "Administrator workspace reset and sample-data generation",
     },
     { name: "Health", description: "Public connectivity checks" },
+    {
+      name: "Staff accounts",
+      description: "Administrator-only user management",
+    },
     {
       name: "Authentication",
       description: "Login, current user, and revocable sessions",
@@ -183,6 +188,73 @@ export const openapi = {
     },
   ],
   paths: {
+    "/api/auth/password": {
+      post: op("changePassword", "Authentication", "Change your own password", {
+        description:
+          "Requires the current password and a different new password of 8–72 characters, at most 72 UTF-8 bytes. Revokes all sessions, clears the cookie, and requires signing in again. Available to administrators and staff.",
+        requestBody: body("PasswordChange", {
+          currentPassword: "",
+          newPassword: "",
+        }),
+        responses: {
+          ...errors,
+          "409": response("Password changed by another request", ref("Error")),
+          "204": { description: "Password changed; all sessions revoked" },
+        },
+      }),
+    },
+    "/api/users": {
+      get: op(
+        "listUsers",
+        "Staff accounts",
+        "List workspace users (admin only)",
+        {
+          parameters: [
+            {
+              name: "page",
+              in: "query",
+              schema: {
+                type: "integer",
+                minimum: 1,
+                maximum: 100000,
+                default: 1,
+              },
+            },
+            {
+              name: "limit",
+              in: "query",
+              schema: { type: "integer", minimum: 1, maximum: 50, default: 20 },
+            },
+          ],
+          responses: {
+            ...errors,
+            "200": response(
+              "Users without password hashes or session versions",
+              list("Admin"),
+            ),
+          },
+        },
+      ),
+      post: op(
+        "createStaff",
+        "Staff accounts",
+        "Create a staff login (admin only)",
+        {
+          description:
+            "Always creates a staff account. Role overrides are rejected. Staff can manage care records and their own password, but cannot manage users or reset/populate data.",
+          requestBody: body("StaffInput", {
+            name: "",
+            email: "",
+            password: "",
+          }),
+          responses: {
+            ...errors,
+            "409": response("Email already registered", ref("Error")),
+            "201": response("Staff account created", wrapped(ref("Admin"))),
+          },
+        },
+      ),
+    },
     "/api/settings/data": {
       get: op(
         "workspaceCounts",
@@ -260,7 +332,7 @@ export const openapi = {
       }),
     },
     "/api/auth/login": {
-      post: op("login", "Authentication", "Sign in as administrator", {
+      post: op("login", "Authentication", "Sign in to the workspace", {
         security: [],
         requestBody: body("Login", {
           email: "",
@@ -554,6 +626,8 @@ export const openapi = {
     },
     schemas: {
       WorkspaceReset: inputSchema(resetSchema),
+      PasswordChange: inputSchema(changePasswordSchema),
+      StaffInput: inputSchema(staffSchema),
       WorkspacePopulate: inputSchema(populateSchema),
       WorkspaceCounts: {
         type: "object",
@@ -604,7 +678,7 @@ export const openapi = {
           id,
           name: string,
           email: { type: "string", format: "email" },
-          role: { type: "string", enum: ["admin"] },
+          role: { type: "string", enum: ["admin", "staff"] },
         },
       },
       Pagination: {

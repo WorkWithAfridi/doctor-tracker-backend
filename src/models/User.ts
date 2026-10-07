@@ -10,7 +10,8 @@ const schema = new Schema(
       trim: true,
     },
     passwordHash: { type: String, required: true, select: false },
-    role: { type: String, enum: ["admin"], default: "admin" },
+    role: { type: String, enum: ["admin", "staff"], default: "staff" },
+    authVersion: { type: Number, default: 0, select: false },
   },
   { timestamps: true },
 );
