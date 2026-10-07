@@ -5,9 +5,9 @@ export const docsRouter = Router();
 docsRouter.get("/openapi.json", (_request, response) => {
   response.json(openapi);
 });
-docsRouter.use(
-  "/docs",
-  swaggerUi.serve,
+docsRouter.use("/docs", swaggerUi.serve);
+docsRouter.get(
+  ["/docs", "/docs/"],
   swaggerUi.setup(undefined, {
     customSiteTitle: "Doctor Tracker · API Reference",
     swaggerOptions: {

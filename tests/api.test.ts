@@ -54,7 +54,15 @@ test("OpenAPI describes all operations and serves an interactive cookie-authenti
   const init = await request(app).get("/docs/swagger-ui-init.js").expect(200);
   assert.match(init.text, /"withCredentials": true/);
   assert.match(init.text, /"validatorUrl": null/);
-  await request(app).get("/docs/swagger-ui-bundle.js").expect(200);
+  const bundle = await request(app)
+    .get("/docs/swagger-ui-bundle.js")
+    .expect(200)
+    .expect("Content-Type", /javascript/);
+  assert.match(bundle.text, /SwaggerUIBundle/);
+  await request(app)
+    .get("/docs/swagger-ui.css")
+    .expect(200)
+    .expect("Content-Type", /css/);
   await request(app).get("/api/doctors").expect(401);
   const docsClient = request.agent(app);
   await docsClient

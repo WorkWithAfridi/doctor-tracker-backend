@@ -13,6 +13,7 @@ for (const asset of [
   "swagger-ui-standalone-preset.js",
   "favicon-16x16.png",
   "favicon-32x32.png",
+  "LICENSE",
 ]) {
   await copyFile(join(source, asset), new URL(asset, destination));
 }
