@@ -71,7 +71,7 @@ Use Node.js 24 LTS, npm, and MongoDB Community Server. Clone this backend reposi
 | `SEED_ADMIN_EMAIL`    | Admin email for first seed          | `admin@doctortracker.com`                  |
 | `SEED_ADMIN_PASSWORD` | Password for first seed             | `Admin123!` (local demo only)              |
 
-Configuration is validated at startup. `.env` is ignored; `.env.example` is included. Hosted database credentials belong only in backend environment settings.
+Configuration is validated at startup. `.env`, `.env.*`, and imported `*.env` credential files are ignored; `.env.example` is included. Hosted database credentials belong only in backend environment settings. Optional `MONGODB_DNS_SERVERS` accepts comma-separated IPv4/IPv6 resolver addresses for Atlas SRV connections; leave it empty to use the system resolver. It applies only to this backend process and does not change Windows network settings.
 
 ## Source structure
 
@@ -127,7 +127,9 @@ Before first use of a new hosted database, run `npm run db:indexes` or `node dis
 
 ## MongoDB Atlas connection
 
-Local MongoDB is the current configured database. To switch later, create an Atlas database user, allow the backend machine/host through Atlas network access, and put the driver connection string in the ignored `.env` file as `MONGODB_URI`. Include `doctor_tracker` as the database name and URL-encode special characters in the database password. Restart the API and run `npm run db:check`, then initialize indexes. Never put Atlas credentials in frontend variables or Git.
+This development workspace uses Atlas for the `doctor_tracker` database; the committed environment example still defaults to local MongoDB for independent setup. Create an Atlas database user, allow the backend machine/host through Atlas network access, and put the driver connection string in the ignored `.env` file as `MONGODB_URI`. Include `doctor_tracker` as the database name and URL-encode special characters in the database password. Restart the API and run `npm run db:check`, then initialize indexes with `npm run db:indexes`. Never put Atlas credentials in frontend variables or Git.
+
+If an Atlas connection fails with `querySrv ECONNREFUSED`, check the DNS resolver. This development machine requires `MONGODB_DNS_SERVERS=1.1.1.1,8.8.8.8`; other machines can leave it unset. Switching databases does not migrate records or sessions. Seed an administrator before logging in to an empty database; `npm run seed` also adds the initial sample doctors and patients when those collections are empty. Use Settings for larger sample batches.
 
 ## Authentication and browser integration
 

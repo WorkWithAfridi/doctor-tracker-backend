@@ -8,6 +8,17 @@ const environmentSchema = z
       .enum(["development", "test", "production"])
       .default("development"),
     MONGODB_URI: z.string().regex(/^mongodb(?:\+srv)?:\/\//),
+    MONGODB_DNS_SERVERS: z
+      .string()
+      .optional()
+      .transform(
+        (value) =>
+          value
+            ?.split(",")
+            .map((server) => server.trim())
+            .filter(Boolean) ?? [],
+      )
+      .pipe(z.array(z.union([z.ipv4(), z.ipv6()]))),
     FRONTEND_URL: z.url(),
     DOCS_ORIGIN: z.url().optional(),
     SESSION_DAYS: z.coerce.number().int().min(1).max(30).default(7),
