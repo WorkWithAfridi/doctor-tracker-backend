@@ -11,6 +11,8 @@ import { doctorRouter } from "./routes/doctor.routes.js";
 import { patientRouter } from "./routes/patient.routes.js";
 import { analyticsRouter } from "./routes/analytics.routes.js";
 import { docsRouter } from "./routes/docs.routes.js";
+import { settingsRouter } from "./routes/settings.routes.js";
+import { workspaceWrite } from "./middleware/workspace-write.middleware.js";
 import {
   requireAuth,
   requireTrustedOrigin,
@@ -54,8 +56,9 @@ app.use(
   requireTrustedOrigin,
 );
 app.use("/api/auth", authRouter);
-app.use("/api/doctors", requireAuth, doctorRouter);
-app.use("/api/patients", requireAuth, patientRouter);
+app.use("/api/doctors", requireAuth, workspaceWrite, doctorRouter);
+app.use("/api/patients", requireAuth, workspaceWrite, patientRouter);
+app.use("/api/settings", requireAuth, workspaceWrite, settingsRouter);
 app.use("/api/analytics", requireAuth, analyticsRouter);
 app.use((_request, response) => {
   response
