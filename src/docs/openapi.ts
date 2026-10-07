@@ -157,7 +157,7 @@ export const openapi = {
     title: "Doctor Tracker API",
     version: "0.1.0",
     description:
-      "Live REST API reference. Expand an endpoint to inspect its parameters, request body, and response schemas. Use **Try it out → Execute** to call the running API.\n\n**Start here:** open Authentication → POST /api/auth/login and execute with the local demo credentials. The browser saves the HTTP-only session cookie automatically; then execute protected endpoints. Do not paste a token into Authorize: browsers manage this cookie. Logout revokes the session.\n\n**Local demo:** admin@doctortracker.com / Admin123! (production accounts may differ). All examples are fictional. Path IDs in examples are illustrative: copy actual IDs from list responses. Create/update/delete calls change real database records.\n\nDates and dashboard statistics use UTC. Export this document at /openapi.json to import into Postman or Bruno.",
+      "Live REST API reference. Expand an endpoint to inspect its parameters, request body, and response schemas. Use **Try it out → Execute** to call the running API.\n\n**Start here:** open Authentication → POST /api/auth/login and enter your administrator email and password before executing. The browser saves the HTTP-only session cookie automatically; then execute protected endpoints. Do not paste a token into Authorize: browsers manage this cookie. Logout revokes the session.\n\nAll non-authentication examples are fictional. Login credentials are intentionally empty. Path IDs in examples are illustrative: copy actual IDs from list responses. Create/update/delete calls change real database records.\n\nDates and dashboard statistics use UTC. Export this document at /openapi.json to import into Postman or Bruno.",
   },
   servers: [{ url: "/", description: "This running API server" }],
   security: [{ sessionCookie: [] }],
@@ -263,8 +263,8 @@ export const openapi = {
       post: op("login", "Authentication", "Sign in as administrator", {
         security: [],
         requestBody: body("Login", {
-          email: "admin@doctortracker.com",
-          password: "Admin123!",
+          email: "",
+          password: "",
         }),
         responses: {
           ...errors,
@@ -276,7 +276,7 @@ export const openapi = {
                 data: {
                   id: "507f1f77bcf86cd799439012",
                   name: "Alex Kim",
-                  email: "admin@doctortracker.com",
+                  email: "administrator@example.com",
                   role: "admin",
                 },
               },
