@@ -10,7 +10,7 @@ npm.cmd run seed
 npm.cmd run dev
 ```
 
-MongoDB must be running at the URI in `.env`. `GET /health` verifies connectivity. The existing frontend still uses its browser demo repository; API integration is a separate next step.
+MongoDB must be running at the URI in `.env`. `GET /health` verifies connectivity. The companion frontend now connects to these APIs for authentication, records, list queries, and dashboard analytics. Its local API URL is `http://localhost:5000/api`; open the frontend at `http://localhost:3000` to match the configured origin.
 
 ## Demo credentials and seed data
 
@@ -179,4 +179,4 @@ Integration tests cover authentication, origin protection, logout revocation, ex
 
 ## Documentation to complete
 
-Add final repository/deployment URLs and connect the frontend to these endpoints after the API contracts are reviewed.
+Add final repository/deployment URLs after publishing and verify authentication with the chosen live frontend/backend domain topology.
