@@ -258,9 +258,9 @@ The companion frontend README lists the required dashboard, doctors/patients and
 | Backend GitHub repository link    | [doctor-tracker-backend](https://github.com/WorkWithAfridi/doctor-tracker-backend)                                              |
 | Frontend GitHub repository link   | [doctor-tracker-frontend](https://github.com/WorkWithAfridi/doctor-tracker-frontend)                                            |
 | Live backend API URL              | [Production API](https://doctor-tracker-backend-xi.vercel.app/api)                                                              |
-| Live frontend website URL         | Pending deployment.                                                                                                             |
+| Live frontend website URL         | [Doctor Tracker](https://doctor-tracker-frontend-ten.vercel.app)                                                                |
 | Live Swagger and health endpoints | [Swagger](https://doctor-tracker-backend-xi.vercel.app/docs/) and [health](https://doctor-tracker-backend-xi.vercel.app/health) |
 | Reviewer credentials              | Local seeded account above; confirm the deployed demo credentials separately.                                                   |
 | Desktop and mobile UI evidence    | Pending capture; see Visual evidence.                                                                                           |
 
-Before submission, deploy the frontend, update `FRONTEND_URL` on the backend, replace remaining pending values with real URLs, verify authentication on the deployed hosts, and include reviewed UI screenshots. Local development URLs are not live submission URLs.
+Both applications are deployed. The backend allows the production frontend origin `https://doctor-tracker-frontend-ten.vercel.app`. Before submission, verify the full portal workflows and include reviewed desktop/mobile UI screenshots. Local development URLs are not live submission URLs.
