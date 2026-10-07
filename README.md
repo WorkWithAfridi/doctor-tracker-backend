@@ -126,7 +126,7 @@ Set these variables in Vercel's Production environment before deploying:
 | `FRONTEND_URL`     | The exact frontend origin; use `http://localhost:3000` until the frontend is deployed, then replace it with the production frontend origin |
 | `DOCS_ORIGIN`      | The backend's stable production HTTPS origin, so Swagger can perform authenticated writes                                                  |
 | `COOKIE_SAME_SITE` | `none` for a frontend on a separate site; HTTPS is required and third-party cookie restrictions still apply                                |
-| `TRUST_PROXY_HOPS` | Configure for the host's verified proxy topology; leave at `0` until verified                                                              |
+| `TRUST_PROXY_HOPS` | `1` for this direct Vercel deployment, whose edge overwrites `X-Forwarded-For` with the client IP                                          |
 
 Leave `MONGODB_DNS_SERVERS` unset unless the hosting environment needs an explicit resolver. Do not upload local `.env` or imported credential files; `.vercelignore` excludes them. MongoDB connections are established on demand and shared by concurrent requests within each function instance. `/health` connects and pings the database, returning 503 if unavailable. Documentation remains accessible without a database connection. The build copies Swagger's static assets to `public/docs` because Vercel serves static files through its CDN.
 
