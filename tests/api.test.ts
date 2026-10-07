@@ -317,7 +317,7 @@ test("settings validate bulk operations and preserve administrators, sessions, a
   const populated = await client
     .post("/api/settings/populate")
     .set("Origin", origin)
-    .send({ patientCount: 1000 })
+    .send({ patientCount: 1000, doctorCount: 24 })
     .expect(201);
   assert.deepEqual(populated.body.data, {
     doctors: 24,
@@ -328,10 +328,17 @@ test("settings validate bulk operations and preserve administrators, sessions, a
   const again = await client
     .post("/api/settings/populate")
     .set("Origin", origin)
-    .send({ patientCount: 1000 })
+    .send({ patientCount: 1000, doctorCount: 12 })
     .expect(201);
   assert.equal(again.body.data.patients, 2000);
-  assert.equal(again.body.data.doctorsAdded, 0);
+  assert.equal(again.body.data.doctorsAdded, 12);
+  assert.equal(again.body.data.doctors, 36);
+  for (const doctorCount of [0, 2001, 1.5])
+    await client
+      .post("/api/settings/populate")
+      .set("Origin", origin)
+      .send({ patientCount: 1000, doctorCount })
+      .expect(400);
   const ids = await Doctor.distinct("_id");
   assert.equal(await Patient.countDocuments({ doctorId: { $nin: ids } }), 0);
   const counts = await client.get("/api/settings/data").expect(200);

@@ -146,7 +146,7 @@ Doctor deletion is intentionally omitted, so patient relationships cannot be orp
 ### Workspace settings
 
 - `GET /api/settings/data`: current doctor and patient counts.
-- `POST /api/settings/populate` with `{ "patientCount": 1500 }`: append 1,000–2,000 fictional patients per request; create 24 sample doctors only when no doctors exist. Existing records are preserved. Dates span 90 days for chart exploration.
+- `POST /api/settings/populate` with `{ "doctorCount": 100, "patientCount": 1500 }`: append 1–2,000 fictional doctors (default 100) and 1,000–2,000 patients per request. Patients are assigned across existing and newly added doctors. Existing records are preserved. Dates span 90 days for chart exploration.
 - `POST /api/settings/reset` with `{ "confirmation": "RESET" }`: permanently delete all patients, then doctors. Preserve administrator accounts, sessions, collections, and indexes. This does not drop the database.
 
 All settings endpoints require an administrator session; writes require a trusted Origin. Reset and population are explicit operations, never performed automatically at startup. The frontend requires confirmation before either write. The workspace write guard rejects overlapping record mutations with HTTP 409 on this API process. Reads remain available. This guard coordinates a single API process; a multi-process deployment would require database-level coordination. Bulk operations on standalone local MongoDB are not transactions: if the database fails partway through, inspect the resulting counts before retrying. Repeating population appends another batch.

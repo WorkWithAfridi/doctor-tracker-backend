@@ -224,11 +224,14 @@ export const openapi = {
       post: op(
         "populateWorkspace",
         "Settings",
-        "Append 1,000–2,000 fictional patients",
+        "Append fictional doctors and patients",
         {
           description:
-            "Appends patients to existing records. Creates 24 doctors if the workspace has none. Repeated calls append more patients. Creation dates span 90 days for charts.",
-          requestBody: body("WorkspacePopulate", { patientCount: 1500 }),
+            "Appends 1–2,000 doctors (default 100) and 1,000–2,000 patients. Existing records are preserved; patients are assigned across existing and newly added doctors. Repeated calls append another batch. Creation dates span 90 days for charts.",
+          requestBody: body("WorkspacePopulate", {
+            doctorCount: 100,
+            patientCount: 1500,
+          }),
           responses: {
             ...errors,
             "409": response("Another workspace write is running", ref("Error")),
