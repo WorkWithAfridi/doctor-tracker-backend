@@ -27,7 +27,15 @@ export const requireAuth: RequestHandler = async (request, response, next) => {
   };
   next();
 };
-// Cookie-authenticated writes require the known frontend origin. CORS alone is not CSRF protection.
+// Cookie-authenticated writes require an explicitly trusted browser origin.
+const trustedOrigins = new Set([
+  new URL(env.FRONTEND_URL).origin,
+  ...(env.DOCS_ORIGIN
+    ? [new URL(env.DOCS_ORIGIN).origin]
+    : env.NODE_ENV !== "production"
+      ? [`http://localhost:${env.PORT}`]
+      : []),
+]);
 export const requireTrustedOrigin: RequestHandler = (
   request,
   _response,
@@ -35,7 +43,7 @@ export const requireTrustedOrigin: RequestHandler = (
 ) => {
   if (
     !["GET", "HEAD", "OPTIONS"].includes(request.method) &&
-    request.get("origin") !== new URL(env.FRONTEND_URL).origin
+    !trustedOrigins.has(request.get("origin") ?? "")
   )
     throw new ApiError(403, "Request origin is not allowed");
   next();

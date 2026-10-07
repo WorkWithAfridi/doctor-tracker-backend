@@ -9,6 +9,7 @@ const environmentSchema = z
       .default("development"),
     MONGODB_URI: z.string().regex(/^mongodb(?:\+srv)?:\/\//),
     FRONTEND_URL: z.url(),
+    DOCS_ORIGIN: z.url().optional(),
     SESSION_DAYS: z.coerce.number().int().min(1).max(30).default(7),
     TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(0),
     COOKIE_SAME_SITE: z.enum(["lax", "strict", "none"]).default("lax"),

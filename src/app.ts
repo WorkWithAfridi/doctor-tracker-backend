@@ -10,6 +10,7 @@ import { authRouter } from "./routes/auth.routes.js";
 import { doctorRouter } from "./routes/doctor.routes.js";
 import { patientRouter } from "./routes/patient.routes.js";
 import { analyticsRouter } from "./routes/analytics.routes.js";
+import { docsRouter } from "./routes/docs.routes.js";
 import {
   requireAuth,
   requireTrustedOrigin,
@@ -19,11 +20,20 @@ export const app = express();
 
 app.disable("x-powered-by");
 app.set("trust proxy", env.TRUST_PROXY_HOPS);
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        upgradeInsecureRequests: env.NODE_ENV === "production" ? [] : null,
+      },
+    },
+  }),
+);
 app.use(cors({ origin: new URL(env.FRONTEND_URL).origin, credentials: true }));
 app.use(express.json({ limit: "100kb" }));
 app.use(cookieParser());
 app.use(healthRouter);
+app.use(docsRouter);
 app.use(
   "/api",
   (_request, response, next) => {
