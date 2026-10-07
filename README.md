@@ -4,6 +4,22 @@
 
 Doctor Tracker API is an independent Express REST service for authenticated doctor and patient management and dashboard analytics. It stores application records and revocable login sessions in MongoDB, validates every write, and performs filtering, pagination, and analytics on the server.
 
+## Live links
+
+| Resource                  | URL                                                                                  |
+| ------------------------- | ------------------------------------------------------------------------------------ |
+| Frontend application      | [Doctor Tracker](https://doctor-tracker-frontend-ten.vercel.app)                     |
+| Frontend login            | [Sign in](https://doctor-tracker-frontend-ten.vercel.app/login)                      |
+| Backend API documentation | [Swagger UI](https://doctor-tracker-backend-xi.vercel.app/docs/)                     |
+| Backend health check      | [Health](https://doctor-tracker-backend-xi.vercel.app/health)                        |
+| OpenAPI specification     | [OpenAPI JSON](https://doctor-tracker-backend-xi.vercel.app/openapi.json)            |
+| Frontend repository       | [doctor-tracker-frontend](https://github.com/WorkWithAfridi/doctor-tracker-frontend) |
+| Backend repository        | [doctor-tracker-backend](https://github.com/WorkWithAfridi/doctor-tracker-backend)   |
+
+Use Swagger UI to browse and test the live backend. The API base URL is `https://doctor-tracker-backend-xi.vercel.app/api`; it is a configuration prefix, not a standalone endpoint. Opening `/api` directly returns HTTP 404 because no index route is defined. Actual endpoints include `/api/auth/login` and `/api/doctors`; protected endpoints require authentication.
+
+Login credentials are supplied privately to authorized reviewers and are not included in this documentation.
+
 ## Technology stack and assessment coverage
 
 | Layer                   | Implementation                                                                              |
@@ -36,10 +52,9 @@ npm.cmd run dev
 
 MongoDB must be running at the URI in `.env`. `GET /health` verifies connectivity. The companion frontend now connects to these APIs for authentication, records, list queries, and dashboard analytics. Its local API URL is `http://localhost:5000/api`; open the frontend at `http://localhost:3000` to match the configured origin.
 
-## Demo credentials and seed data
+## Development account and seed data
 
-- Email: `admin@doctortracker.com`
-- Password: `Admin123!`
+Configure `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` in the ignored `.env` before running the first seed. Sign in with those configured values. Deployed reviewer access is shared privately; this README does not publish login credentials.
 
 The seed creates one admin, 24 fictional doctors, and 186 fictional patients. Repeated runs preserve existing records and passwords. The seed command does not reset records; the administrator Settings page provides a separately confirmed reset. Set `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` before first seeding to customize the account. Production seeding rejects the default demo password.
 
@@ -76,8 +91,8 @@ Staff can manage doctors and patients, access analytics, and change their own pa
 | `SESSION_DAYS`        | Session lifetime                    | `7`                                        |
 | `COOKIE_SAME_SITE`    | Cookie policy: lax, strict, or none | `lax`                                      |
 | `TRUST_PROXY_HOPS`    | Known reverse proxy hop count       | `0`                                        |
-| `SEED_ADMIN_EMAIL`    | Admin email for first seed          | `admin@doctortracker.com`                  |
-| `SEED_ADMIN_PASSWORD` | Password for first seed             | `Admin123!` (local demo only)              |
+| `SEED_ADMIN_EMAIL`    | Admin email for first seed          | Set privately in ignored `.env`            |
+| `SEED_ADMIN_PASSWORD` | Password for first seed             | Set privately in ignored `.env`            |
 
 Configuration is validated at startup. `.env`, `.env.*`, and imported `*.env` credential files are ignored; `.env.example` is included. Hosted database credentials belong only in backend environment settings. Optional `MONGODB_DNS_SERVERS` accepts comma-separated IPv4/IPv6 resolver addresses for Atlas SRV connections; leave it empty to use the system resolver. It applies only to this backend process and does not change Windows network settings.
 
@@ -172,7 +187,7 @@ Browser requests must use `credentials: 'include'`. All POST/PATCH/DELETE reques
 
 Open [Swagger UI](http://localhost:5000/docs/) with the backend running. All 23 operations include query parameters, request bodies, response schemas, and error codes. Input schemas are generated from the backend's Zod validators; response contracts and examples are maintained in `src/docs/openapi.ts`.
 
-1. Expand **Authentication → POST /api/auth/login**, click **Try it out**, and **Execute** with your account email and password (examples are empty; the local seeded account is listed above).
+1. Expand **Authentication → POST /api/auth/login**, click **Try it out**, enter your privately supplied or locally configured account email and password, and click **Execute**. Credential examples are empty.
 2. The browser saves the session cookie automatically. Expand any protected endpoint, enter query parameters or a body, and execute it to see the actual status, headers, and response from MongoDB.
 3. Copy real record IDs from list responses before trying detail or update endpoints. The displayed examples are illustrative; write operations change real records. Use logout to revoke the session.
 
@@ -270,10 +285,10 @@ The companion frontend README lists the required dashboard, doctors/patients and
 | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | Backend GitHub repository link    | [doctor-tracker-backend](https://github.com/WorkWithAfridi/doctor-tracker-backend)                                              |
 | Frontend GitHub repository link   | [doctor-tracker-frontend](https://github.com/WorkWithAfridi/doctor-tracker-frontend)                                            |
-| Live backend API URL              | [Production API](https://doctor-tracker-backend-xi.vercel.app/api)                                                              |
+| Live backend API documentation    | [Swagger UI](https://doctor-tracker-backend-xi.vercel.app/docs/)                                                                |
 | Live frontend website URL         | [Doctor Tracker](https://doctor-tracker-frontend-ten.vercel.app)                                                                |
 | Live Swagger and health endpoints | [Swagger](https://doctor-tracker-backend-xi.vercel.app/docs/) and [health](https://doctor-tracker-backend-xi.vercel.app/health) |
-| Reviewer credentials              | Local seeded account above; confirm the deployed demo credentials separately.                                                   |
+| Reviewer access                   | Shared privately; no login credentials are published here.                                                                      |
 | Desktop and mobile UI evidence    | Pending capture; see Visual evidence.                                                                                           |
 
 Both applications are deployed. The backend allows the production frontend origin `https://doctor-tracker-frontend-ten.vercel.app`. Before submission, verify the full portal workflows and include reviewed desktop/mobile UI screenshots. Local development URLs are not live submission URLs.
